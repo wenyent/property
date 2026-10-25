@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Condo $psf Lookup</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1a1d23; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2563eb; --accent-soft: #dbeafe; --warn: #b45309; --warn-bg: #fef3c7;
+    --err: #b91c1c; --err-bg: #fee2e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #181b21; --text: #e6e8eb; --muted: #9aa1ac;
+      --line: #2a2f38; --accent: #60a5fa; --accent-soft: #1e3a5f; --warn: #fbbf24; --warn-bg: #3a2d0c;
+      --err: #fca5a5; --err-bg: #3b1515;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; }
+  h1 { font-size: 22px; margin: 0; }
+  .status { color: var(--muted); font-size: 13px; display: flex; gap: 10px; align-items: center; }
+  .banner { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+  .banner.demo { background: var(--warn-bg); color: var(--warn); }
+  .banner.err { background: var(--err-bg); color: var(--err); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-top: 16px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .04em; margin-bottom: 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--text); padding: 8px 16px; cursor: pointer; font: inherit; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .grid { display: grid; grid-template-columns: 1fr 120px 120px auto; gap: 12px; align-items: end; margin-top: 16px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } .grid .proj { grid-column: 1 / -1; } .grid .go { grid-column: 1 / -1; } }
+  input { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .btn { padding: 9px 18px; border-radius: 8px; border: 0; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--accent); border: 1px solid var(--line); padding: 5px 12px; font-size: 13px; font-weight: 500; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .stats { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .stats { grid-template-columns: 1fr 1fr; } .stats .hero { grid-column: 1 / -1; } }
+  .stat { background: var(--bg); border-radius: 10px; padding: 14px; }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .stat.hero { background: var(--accent-soft); }
+  .stat.hero .v { font-size: 34px; color: var(--accent); }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .scroll { overflow-x: auto; }
+  .bar { height: 8px; background: var(--accent); border-radius: 4px; min-width: 2px; }
+  .barcell { width: 40%; }
+  .empty { color: var(--muted); text-align: center; padding: 24px; }
+  .tabs { display: flex; gap: 4px; margin-top: 20px; border-bottom: 1px solid var(--line); }
+  .tabs button { border: 0; background: none; color: var(--muted); font: inherit; font-weight: 600;
+    padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs button.on { color: var(--accent); border-bottom-color: var(--accent); }
+  .grid.top { grid-template-columns: 120px 120px auto; justify-content: start; }
+  @media (max-width: 640px) { .grid.top { grid-template-columns: 1fr 1fr; } }
+  .hidden { display: none !important; }
+  tr.click { cursor: pointer; }
+  tr.click:hover td { background: var(--bg); }
+  .pname { font-weight: 600; }
+  .pstreet { color: var(--muted); font-size: 12px; }
+  .up { color: #15803d; font-weight: 650; }
+  .down { color: var(--err); font-weight: 650; }
+  @media (prefers-color-scheme: dark) { .up { color: #4ade80; } }
+  .n { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .olink { color: var(--accent); }
+  .mrtOnly { margin-bottom: 4px; }
+  .stat .v.up, .stat.hero .v.up { color: #15803d; }
+  .stat .v.down, .stat.hero .v.down { color: var(--err); }
+  @media (prefers-color-scheme: dark) { .stat .v.up, .stat.hero .v.up { color: #4ade80; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Condo $psf Lookup</h1>
+    <div class="status">
+      <span id="asof">Loading…</span>
+    </div>
+  </header>
+  <div id="banners"></div>
+
+  <div class="tabs" id="tabs">
+    <button data-v="top" class="on">Top growers</button>
+    <button data-v="mrt">By MRT</button>
+    <button data-v="lookup">Project lookup</button>
+  </div>
+
+  <div class="card">
+    <div class="segBlock">
+      <label>Market segment</label>
+      <div class="seg" id="seg">
+        <button data-v="ALL" class="on">All</button>
+        <button data-v="CCR">CCR</button>
+        <button data-v="RCR">RCR</button>
+        <button data-v="OCR">OCR</button>
+      </div>
+    </div>
+    <div class="mrtOnly">
+      <label>Distance from station (nearest exit)</label>
+      <div class="seg" id="radius">
+        <button data-v="500" class="on">500m</button>
+        <button data-v="1000">1km</button>
+        <button data-v="1500">1.5km</button>
+      </div>
+    </div>
+
+    <div class="grid" id="formGrid">
+      <div class="proj lookupOnly">
+        <label for="project">Project</label>
+        <input id="project" list="projectList" placeholder="Start typing a project name…" autocomplete="off">
+        <datalist id="projectList"></datalist>
+      </div>
+      <div class="proj mrtOnly">
+        <label for="station">MRT / LRT station</label>
+        <input id="station" list="stationList" placeholder="Start typing a station, e.g. Bishan" autocomplete="off">
+        <datalist id="stationList"></datalist>
+      </div>
+      <div>
+        <label for="minSqft">Min sqft</label>
+        <input id="minSqft" type="number" min="0" step="10" value="650">
+      </div>
+      <div>
+        <label for="maxSqft">Max sqft</label>
+        <input id="maxSqft" type="number" min="0" step="10" value="800">
+      </div>
+      <div class="go"><button class="btn" id="searchBtn" style="width:100%">Search</button></div>
+    </div>
+    <div class="hint lookupOnly" id="projCount"></div>
+  </div>
+
+  <div id="results"></div>
+  <div id="topResults"></div>
+  <div id="mrtResults"></div>
+
+  <p class="hint">Source: URA private residential transactions (past 5 years, plus older sales kept from earlier updates), updated automatically on a schedule.
+    Condominiums and apartments only; resale and sub sale; single-unit sales. $psf = price ÷ floor area (sqm × 10.7639).
+    MRT distances are straight-line from the project to the station's nearest exit (LTA MRT Station Exit data, data.gov.sg).</p>
+</div>
+
+<script src="app-data.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt$ = (n) => "$" + Math.round(n).toLocaleString("en-SG");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let segment = "ALL";
+let projects = [];
+let pollTimer = null;
+
+function label(p) { return `${p.project} — ${p.street}`; }
+
+function renderStatus(s) {
+  const when = s.fetchedAt
+    ? new Date(s.fetchedAt).toLocaleString("en-SG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "no data yet";
+  $("asof").textContent = `Data updated ${when}`;
+  let b = "";
+  if (s.demo) b += `<div class="banner demo"><strong>Demo mode:</strong> fictional data. The real data appears after the first scheduled update has run (see the README).</div>`;
+  if (s.lastError) b += `<div class="banner err">${esc(s.lastError)}</div>`;
+  $("banners").innerHTML = b;
+}
+
+async function loadProjects() {
+  const r = await api(`/api/projects?segment=${segment}`);
+  projects = r.projects;
+  $("projectList").innerHTML = projects.map((p) => `<option value="${esc(label(p))}">`).join("");
+  $("projCount").textContent = `${projects.length.toLocaleString()} projects in ${segment === "ALL" ? "all segments" : segment}`;
+  renderStatus(r);
+}
+
+async function search() {
+  const val = $("project").value.trim();
+  const p = projects.find((x) => label(x) === val)
+         || projects.find((x) => x.project.toLowerCase() === val.toLowerCase());
+  if (!p) {
+    $("results").innerHTML = `<div class="card empty">Pick a project from the list${segment !== "ALL" ? ` (only ${segment} projects are shown)` : ""}.</div>`;
+    return;
+  }
+  const qs = new URLSearchParams({ id: p.id, minSqft: $("minSqft").value, maxSqft: $("maxSqft").value });
+  const r = await api(`/api/search?${qs}`);
+  renderResults(r);
+}
+
+const atLeast = (n) => (n === 1 ? "at least one sale" : `at least ${n} sales`);
+
+// Same growth measure as the Top growers tab
+function growthBlock(g) {
+  if (!g || !g.endYear) return "";
+  if (!g.ok) {
+    return `<div class="hint" style="margin-top:14px">Growth ${g.startYear}→${g.endYear}: not enough sales to measure
+      (needs ${atLeast(g.minSales)} in each year; this size range has ${g.startSales} in ${g.startYear} and ${g.endSales} in ${g.endYear}).</div>`;
+  }
+  const cls = g.growthPct >= 0 ? "up" : "down";
+  return `
+    <div class="stats" style="margin-top:12px">
+      <div class="stat hero"><div class="k">Growth ${g.startYear} → ${g.endYear}</div><div class="v ${cls}">${pct(g.growthPct)}</div></div>
+      <div class="stat"><div class="k">Per year</div><div class="v ${cls}">${pct(g.annualPct)}</div></div>
+      <div class="stat"><div class="k">${g.startYear} avg $psf</div><div class="v">${fmt$(g.startPsf)} <span class="n">(${g.startSales})</span></div></div>
+      <div class="stat"><div class="k">${g.endYear} avg $psf</div><div class="v">${fmt$(g.endPsf)} <span class="n">(${g.endSales})</span></div></div>
+    </div>`;
+}
+
+function renderResults(r) {
+  const min = $("minSqft").value, max = $("maxSqft").value;
+  const range = min || max ? `${min || 0}–${max || "any"} sqft` : "all sizes";
+  if (!r.stats) {
+    $("results").innerHTML = `<div class="card"><h2>${esc(r.project)}</h2><div class="empty">No resale or sub-sale transactions in ${range}.</div></div>`;
+    return;
+  }
+  const s = r.stats;
+  const maxYear = Math.max(...s.byYear.map((y) => y.avgPsf));
+  $("results").innerHTML = `
+    <div class="card">
+      <h2>${esc(r.project)}</h2>
+      <div class="sub">${esc(r.street)} · ${esc(r.marketSegment)} · ${range}</div>
+      <div class="stats">
+        <div class="stat hero"><div class="k">Average $psf</div><div class="v">${fmt$(s.avgPsf)}</div></div>
+        <div class="stat"><div class="k">Median $psf</div><div class="v">${fmt$(s.medianPsf)}</div></div>
+        <div class="stat"><div class="k">Sales</div><div class="v">${s.count}</div></div>
+        <div class="stat"><div class="k">Range $psf</div><div class="v" style="font-size:16px">${fmt$(s.minPsf)}–${fmt$(s.maxPsf)}</div></div>
+      </div>
+      ${growthBlock(r.growth)}
+    </div>
+    <div class="card">
+      <h2>Average $psf by year</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>Year</th><th>Sales</th><th>Avg $psf</th><th>vs prev year</th><th class="barcell"></th></tr></thead>
+        <tbody>${s.byYear.map((y, i) => {
+          const prev = s.byYear[i - 1];
+          const ch = prev && prev.year === y.year - 1 ? (y.avgPsf / prev.avgPsf - 1) * 100 : null;
+          return `
+          <tr><td>${y.year}</td><td>${y.count}</td><td>${fmt$(y.avgPsf)}</td>
+          <td class="${ch == null ? "n" : ch >= 0 ? "up" : "down"}">${ch == null ? "–" : pct(ch)}</td>
+          <td class="barcell"><div class="bar" style="width:${(y.avgPsf / maxYear) * 100}%"></div></td></tr>`;
+        }).join("")}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <h2>Transactions</h2>
+      <div class="sub">${s.count} sales, newest first</div>
+      <div class="scroll"><table>
+        <thead><tr><th>Date</th><th>Price</th><th>Sqft</th><th>$psf</th><th>Floor</th><th>Type</th><th>Sale</th></tr></thead>
+        <tbody>${r.sales.map((x) => `
+          <tr><td>${x.date}</td><td>${fmt$(x.price)}</td><td>${x.sqft.toLocaleString()}</td><td>${fmt$(x.psf)}</td>
+          <td>${esc(x.floorRange)}</td><td>${esc(x.propertyType)}</td><td>${esc(x.saleType)}</td></tr>`).join("")}
+        </tbody>
+      </table></div>
+    </div>`;
+}
+
+// ---------- Top growers ----------
+let view = "top";
+const pct = (n) => (n >= 0 ? "+" : "") + n.toFixed(1) + "%";
+
+async function loadTop() {
+  const qs = new URLSearchParams({ segment, minSqft: $("minSqft").value, maxSqft: $("maxSqft").value });
+  const r = await api(`/api/top?${qs}`);
+  renderStatus(r);
+  const min = $("minSqft").value, max = $("maxSqft").value;
+  const range = min || max ? `${min || 0}–${max || "any"} sqft` : "all sizes";
+  const segName = segment === "ALL" ? "all segments" : segment;
+  if (!r.endYear) { $("topResults").innerHTML = `<div class="card empty">No data yet.</div>`; return; }
+  if (!r.rows.length) {
+    $("topResults").innerHTML = `<div class="card empty">No projects in ${segName}, ${range} had ${atLeast(r.minSales)} in both ${r.startYear} and ${r.endYear}. Try a wider size range.</div>`;
+    return;
+  }
+  $("topResults").innerHTML = `
+    <div class="card">
+      <h2>Top ${r.rows.length} growers · ${segName} · ${range}</h2>
+      <div class="sub">Average $psf in ${r.startYear} vs ${r.endYear}. ${r.eligible} projects had ${atLeast(r.minSales)} in both years. Check the sale counts in brackets: a figure based on 1–2 sales can reflect one unusual unit.
+        Click a project to see its sales.</div>
+      <div class="scroll"><table>
+        <thead><tr><th>#</th><th style="text-align:left">Project</th><th>Seg</th>
+          <th>${r.startYear} $psf</th><th>${r.endYear} $psf</th><th>Growth</th><th>Per year</th></tr></thead>
+        <tbody>${r.rows.map((x, i) => `
+          <tr class="click" data-id="${esc(x.id)}" data-seg="${esc(x.marketSegment)}">
+            <td>${i + 1}</td>
+            <td style="text-align:left;white-space:normal"><div class="pname">${esc(x.project)}</div><div class="pstreet">${esc(x.street)}</div></td>
+            <td>${esc(x.marketSegment)}</td>
+            <td>${fmt$(x.startPsf)} <span class="n">(${x.startSales})</span></td>
+            <td>${fmt$(x.endPsf)} <span class="n">(${x.endSales})</span></td>
+            <td class="${x.growthPct >= 0 ? "up" : "down"}">${pct(x.growthPct)}</td>
+            <td>${pct(x.annualPct)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>
+      <div class="hint">Numbers in brackets are how many sales each average is based on. ${r.endYear} is year-to-date.</div>
+    </div>`;
+}
+
+// ---------- By MRT ----------
+let radius = 500;
+let stations = [];
+
+async function loadStations() {
+  const r = await api("/api/stations");
+  stations = r.stations;
+  $("stationList").innerHTML = stations.map((s) => `<option value="${esc(s.name)}">${s.kind}</option>`).join("");
+  return r;
+}
+
+const fmtDist = (m) => (m >= 1000 ? (m / 1000).toFixed(2).replace(/\.?0+$/, "") + " km" : m + " m");
+
+async function loadMrt() {
+  const val = $("station").value.trim();
+  if (!stations.length) {
+    const r = await loadStations();
+    if (!stations.length) {
+      $("mrtResults").innerHTML = `<div class="card empty">${r.error ? esc(r.error) : "MRT stations are still loading, try again in a few seconds."}</div>`;
+      return;
+    }
+  }
+  const st = stations.find((s) => s.name.toLowerCase() === val.toLowerCase());
+  if (!st) { $("mrtResults").innerHTML = `<div class="card empty">Pick a station from the list.</div>`; return; }
+  $("station").value = st.name;
+  const qs = new URLSearchParams({ station: st.name, radius, minSqft: $("minSqft").value, maxSqft: $("maxSqft").value });
+  const r = await api(`/api/mrt?${qs}`);
+  renderStatus(r);
+  const min = $("minSqft").value, max = $("maxSqft").value;
+  const range = min || max ? `${min || 0}–${max || "any"} sqft` : "all sizes";
+  const total = r.rows.length + r.notEnough.length;
+  const head = `${esc(r.station)} ${r.kind} · within ${fmtDist(r.radius)} · ${range}`;
+  if (!total) {
+    $("mrtResults").innerHTML = `<div class="card empty">No condo or apartment sales within ${fmtDist(r.radius)} of ${esc(r.station)} in ${range}. Try a bigger radius.</div>`;
+    return;
+  }
+  const area = r.area ? `
+      <div class="stats" style="margin:4px 0 16px">
+        <div class="stat hero"><div class="k">Area growth ${r.startYear} → ${r.endYear}</div><div class="v ${r.area.growthPct >= 0 ? "up" : "down"}">${pct(r.area.growthPct)}</div></div>
+        <div class="stat"><div class="k">Per year</div><div class="v ${r.area.annualPct >= 0 ? "up" : "down"}">${pct(r.area.annualPct)}</div></div>
+        <div class="stat"><div class="k">${r.startYear} avg $psf</div><div class="v">${fmt$(r.area.startPsf)} <span class="n">(${r.area.startSales})</span></div></div>
+        <div class="stat"><div class="k">${r.endYear} avg $psf</div><div class="v">${fmt$(r.area.endPsf)} <span class="n">(${r.area.endSales})</span></div></div>
+      </div>` : `<div class="hint" style="margin-bottom:12px">Not enough sales in this area to measure overall growth.</div>`;
+  const table = r.rows.length ? `
+      <div class="scroll"><table>
+        <thead><tr><th>#</th><th style="text-align:left">Project</th><th>To MRT</th>
+          <th>${r.startYear} $psf</th><th>${r.endYear} $psf</th><th>Growth</th><th>Per year</th></tr></thead>
+        <tbody>${r.rows.map((x, i) => `
+          <tr class="click" data-id="${esc(x.id)}">
+            <td>${i + 1}</td>
+            <td style="text-align:left;white-space:normal"><div class="pname">${esc(x.project)}</div><div class="pstreet">${esc(x.street)} · ${esc(x.marketSegment)}</div></td>
+            <td>${fmtDist(x.distance)}</td>
+            <td>${fmt$(x.startPsf)} <span class="n">(${x.startSales})</span></td>
+            <td>${fmt$(x.endPsf)} <span class="n">(${x.endSales})</span></td>
+            <td class="${x.growthPct >= 0 ? "up" : "down"}">${pct(x.growthPct)}</td>
+            <td>${pct(x.annualPct)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>` : `<div class="empty">No project here had ${atLeast(r.minSales)} in both ${r.startYear} and ${r.endYear}.</div>`;
+  const others = r.notEnough.length ? `
+      <div class="hint">Also nearby, but too few sales in ${r.startYear} or ${r.endYear} to rank:
+        ${r.notEnough.map((x) => `<a href="#" class="olink" data-id="${esc(x.id)}">${esc(x.project)}</a> (${fmtDist(x.distance)})`).join(", ")}.</div>` : "";
+  $("mrtResults").innerHTML = `
+    <div class="card">
+      <h2>${head}</h2>
+      <div class="sub">${total} projects nearby. Area growth uses every sale within the radius. Ranked projects need ${atLeast(r.minSales)} in both ${r.startYear} and ${r.endYear}; figures based on 1–2 sales can reflect one unusual unit. Click a project to see its sales.</div>
+      ${area}
+      ${r.rows.length ? `<h2 style="margin-top:4px">Top ${r.rows.length} growers</h2>` : ""}
+      ${table}
+      ${others}
+      <div class="hint">Numbers in brackets are how many sales each average is based on. ${r.endYear} is year-to-date.</div>
+    </div>`;
+}
+
+async function openProject(id) {
+  if (segment !== "ALL") {
+    segment = "ALL";
+    document.querySelectorAll("#seg button").forEach((x) => x.classList.toggle("on", x.dataset.v === "ALL"));
+  }
+  setView("lookup");
+  await loadProjects();
+  const p = projects.find((x) => x.id === id);
+  if (p) { $("project").value = label(p); search(); }
+}
+
+["topResults", "mrtResults"].forEach((el) => $(el).addEventListener("click", (e) => {
+  const link = e.target.closest(".olink");
+  if (link) { e.preventDefault(); return openProject(link.dataset.id); }
+  const tr = e.target.closest("tr.click"); if (tr) openProject(tr.dataset.id);
+}));
+
+$("radius").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  radius = Number(b.dataset.v);
+  document.querySelectorAll("#radius button").forEach((x) => x.classList.toggle("on", x === b));
+  if ($("station").value.trim()) loadMrt();
+});
+
+function setView(v) {
+  view = v;
+  document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.v === v));
+  document.querySelectorAll(".lookupOnly").forEach((el) => el.classList.toggle("hidden", v !== "lookup"));
+  document.querySelectorAll(".mrtOnly").forEach((el) => el.classList.toggle("hidden", v !== "mrt"));
+  document.querySelectorAll(".segBlock").forEach((el) => el.classList.toggle("hidden", v === "mrt"));
+  $("formGrid").classList.toggle("top", v === "top");
+  $("searchBtn").textContent = v === "top" ? "Show top 50" : "Search";
+  $("results").classList.toggle("hidden", v !== "lookup");
+  $("topResults").classList.toggle("hidden", v !== "top");
+  $("mrtResults").classList.toggle("hidden", v !== "mrt");
+  if (v === "mrt" && !stations.length) loadStations();
+}
+
+function run() { view === "top" ? loadTop() : view === "mrt" ? loadMrt() : search(); }
+
+$("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setView(b.dataset.v);
+  if (b.dataset.v === "top") loadTop();
+});
+
+$("seg").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  segment = b.dataset.v;
+  document.querySelectorAll("#seg button").forEach((x) => x.classList.toggle("on", x === b));
+  $("project").value = "";
+  $("results").innerHTML = "";
+  loadProjects();
+  if (view === "top") loadTop();
+});
+$("searchBtn").addEventListener("click", run);
+["project", "station", "minSqft", "maxSqft"].forEach((id) =>
+  $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") run(); }));
+$("station").addEventListener("change", () => { if (view === "mrt") loadMrt(); });
+
+setView("top");
+loadData().then(() => { loadProjects(); loadTop(); });
+</script>
+</body>
+</html>
