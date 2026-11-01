@@ -1,0 +1,71 @@
+name: Update data and deploy
+
+on:
+  schedule:
+    - cron: "47 21 * * *"   # 5:47am Singapore time, every day
+  workflow_dispatch:         # the "Run workflow" button
+  push:
+    branches: [main]
+
+permissions:
+  contents: write            # to save the refreshed data files
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find the app folder
+        id: app
+        run: |
+          f=$(find . -path "*/scripts/update-data.js" -not -path "*/node_modules/*" | head -1)
+          if [ -z "$f" ]; then echo "scripts/update-data.js not found"; exit 1; fi
+          echo "dir=$(dirname "$(dirname "$f")")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Update data from URA and LTA
+        id: update
+        continue-on-error: true      # if URA is unreachable, still deploy with the data we already have
+        working-directory: ${{ steps.app.outputs.dir }}
+        env:
+          URA_ACCESS_KEY: ${{ secrets.URA_ACCESS_KEY }}
+        run: node scripts/update-data.js
+
+      - name: Warn if the update failed
+        if: steps.update.outcome == 'failure'
+        run: echo "::warning::Data update failed. The site was deployed with the previous data. Open the 'Update data' step above for the reason."
+
+      - name: Save refreshed data to the repository
+        working-directory: ${{ steps.app.outputs.dir }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data
+          if git diff --cached --quiet; then
+            echo "No data changes."
+          else
+            git commit -m "Update data"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.app.outputs.dir }}/site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
